@@ -7,9 +7,7 @@ on:
       - 'v*.*.*'
   schedule:
     - cron: '0 0 1 */1 *'
-
-env:
-  TIZEN_STUDIO_VER: 5.6
+  workflow_dispatch:
 
 jobs:
   build:
@@ -42,7 +40,7 @@ jobs:
         run: |
           echo "${{ secrets.TIZEN_AUTHOR_KEY }}" | base64 -d > "${GITHUB_WORKSPACE}/tizenbrew-author.p12"
 
-      - name: Build TizenBrew
+      - name: Build TizenBrew Installer
         working-directory: client
         run: |
           mkdir release
@@ -53,20 +51,20 @@ jobs:
         run: |
           sed -i 's/xvvl3S1bTI/xvvl3S1bTU/g' config.xml
 
-      - name: Build TizenBrew for USB Demo
+      - name: Build TizenBrew Installer for USB Demo
         working-directory: client
         run: |
           tizenjs build . -t wgt -o Installer.wgt --author "${GITHUB_WORKSPACE}/tizenbrew-author.p12" --authorPwd '${{ secrets.TIZEN_AUTHOR_KEY_PW }}' -p public --ignore node_modules,/.*\.wgt$/,/userwidget/,/release/
 
-      - name: Package TizenBrew as USB Demo Package
+      - name: Package TizenBrew Installer as USB Demo Package
         working-directory: client
         run: |
           wgt-to-usb Installer.wgt 
 
-      - name: Upload TizenBrew package artifact for Old Tizen
+      - name: Upload TizenBrew Installer package artifact
         uses: actions/upload-artifact@v4
         with:
-            name: app-${{ github.sha }}-old.wgt
+            name: installer-${{ github.sha }}.wgt
             path: client/release/TizenBrewInstaller.wgt
       
       - name: Zip USB Demo Package
@@ -74,8 +72,15 @@ jobs:
         run: |
           zip -r release/userwidget.zip userwidget/
       
+      - name: Upload TizenBrew Installer USB Demo artifact
+        uses: actions/upload-artifact@v4
+        with:
+            name: installer-${{ github.sha }}-demopkg.zip
+            path: client/release/userwidget.zip
+      
       - name: Release TizenBrew Build Results
         uses: softprops/action-gh-release@v1
+        if: contains(github.ref, 'refs/tags/v')
         with:
           tag_name: ${{ env.RELEASE_VERSION }}
           files: |
